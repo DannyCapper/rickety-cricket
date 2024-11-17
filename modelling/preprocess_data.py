@@ -37,10 +37,9 @@ def process_json(folder, filename):
             for i in range(2):
 
                 ball = 0
+                extra_runs = 0
 
                 for j, over in enumerate(data["innings"][i]["overs"]):
-
-                    extra_runs = 0
                     
                     for k, delivery in enumerate(over["deliveries"]):
                         
@@ -77,7 +76,16 @@ def process_json(folder, filename):
                             , ignore_index=True
                             )
 
-                            extra_runs = 0                            
+                            extra_runs = 0      
+
+                if extra_runs > 0:
+
+                    total_runs[i] += extra_runs
+
+                    last_row_idx = match_df[match_df['innings'] == (i + 1)].index[-1]
+                    match_df.at[last_row_idx, 'runs'] += extra_runs
+
+                    extra_runs = 0            
 
         match_df['chasing_team_won'] = np.where(total_runs[0] > total_runs[1], 0, np.where(total_runs[1] > total_runs[0], 1, None))
         match_df['total_chasing'] = np.where(match_df['innings'] == 2, total_runs[0], np.nan)
