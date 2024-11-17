@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from modelling.preprocess_data import process_json
+from model_training.preprocess_data import process_json
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
 catboost
 ipykernel
 ipywidgets
+flask
 numpy
 pandas
 pytest
-scikit-learn
 requests
+scikit-learn
