@@ -97,29 +97,61 @@ class Predictions:
             )
             raise
 
-def update_pending_results(api_key, predictions_table):
-    """
-    Update pending results where matches have concluded.
-    """
-    items = predictions_table.get_pending_predictions()
-    for item in items:
-        if not isinstance(item, dict):
-            logger.error(f"Item is not a dict: {item}")
-            continue
+    def update_pending_results(self, api_key):
+        """
+        Update pending results where matches have concluded.
+        """
+        items = self.get_pending_predictions()
+        for item in items:
+            if not isinstance(item, dict):
+                logger.error(f"Item is not a dict: {item}")
+                continue
 
-        prediction_id = item.get('prediction_id')
-        if prediction_id is None:
-            logger.warning("No prediction_id found in item.")
-            continue
+            prediction_id = item.get('prediction_id')
+            if prediction_id is None:
+                logger.warning("No prediction_id found in item.")
+                continue
 
-        info = item.get('info', {})
-        match_id = info.get('match_id')
-        if not match_id:
-            logger.warning(f"Match ID not found for prediction_id {prediction_id}")
-            continue
+            info = item.get('info', {})
+            match_id = info.get('match_id')
+            if not match_id:
+                logger.warning(f"Match ID not found for prediction_id {prediction_id}")
+                continue
 
-        result, chasing_team_won = get_match_result(api_key, match_id)
-        if result is not None and chasing_team_won is not None:
-            predictions_table.update_match_result(prediction_id, result, chasing_team_won)
-        else:
-            logger.info(f"Match {match_id} is still ongoing or no result found.")
+            result, chasing_team_won = get_match_result(api_key, match_id)
+            if result is not None and chasing_team_won is not None:
+                self.update_match_result(prediction_id, result, chasing_team_won)
+            else:
+                logger.info(f"Match {match_id} is still ongoing or no result found.")
+
+    def fetch_predictions(self):
+        """
+        Retrieve predictions from the DynamoDB table associated with this Predictions instance.
+        This method scans the table and returns all items that have both 'info.result' and 'info.chasing_team_won' set.
+
+        These returned items can be processed by functions such as process_predictions and calculate_weekly_accuracy.
+
+        :return: A list of items (dictionaries) from DynamoDB that match the filter criteria.
+        """
+        try:
+            response = self.table.scan(
+                FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists()
+            )
+            items = response.get('Items', [])
+
+            # Handle pagination if there are more items
+            while 'LastEvaluatedKey' in response:
+                response = self.table.scan(
+                    FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists(),
+                    ExclusiveStartKey=response['LastEvaluatedKey']
+                )
+                items.extend(response.get('Items', []))
+
+            return items
+
+        except ClientError as e:
+            logger.error(
+                f"Error fetching predictions from table {self.table_name}. "
+                f"Error: {e.response['Error']['Code']}: {e.response['Error']['Message']}"
+            )
+            raise

@@ -29,7 +29,7 @@ def main():
     predictions_table = Predictions(dynamodb_resource, 'Predictions')
 
     # Update any pending results first
-    update_pending_results(api_key, predictions_table)
+    predictions_table.update_pending_results(api_key)
 
     # Load the model
     model = CatBoostClassifier()
