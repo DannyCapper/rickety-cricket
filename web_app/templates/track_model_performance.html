@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Track Model Performance</title>
+    <!-- Include Chart.js from a CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Model Performance</h1>
+    <p>Overall Accuracy: {{ overall_accuracy | round(2) }}%</p>
+
+    <canvas id="accuracyChart" width="800" height="400"></canvas>
+
+    <script>
+        // Data passed from Flask
+        const weeks = {{ weeks | tojson }};
+        const accuracies = {{ accuracies | tojson }};
+
+        // Set up the chart
+        const ctx = document.getElementById('accuracyChart').getContext('2d');
+        const accuracyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: weeks,
+                datasets: [{
+                    label: 'Weekly Accuracy (%)',
+                    data: accuracies,
+                    fill: false,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Week'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Accuracy (%)'
+                        },
+                        min: 0,
+                        max: 100
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

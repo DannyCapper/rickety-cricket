@@ -1,10 +1,10 @@
-# app.py
-
 from flask import Flask, render_template, request
 import requests
-import os
 import numpy as np
 from catboost import CatBoostClassifier
+import boto3
+from boto3.dynamodb.conditions import Attr
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -169,6 +169,187 @@ def prepare_features(match_info):
     }
 
     return features
+
+
+from datetime import datetime
+from boto3.dynamodb.types import TypeDeserializer
+
+def process_predictions(items):
+    deserializer = TypeDeserializer()
+    processed_data = []
+
+    for item in items:
+        info = item.get('info', {})
+
+        # Deserialize the 'info' map
+        deserialized_info = {}
+        for key, value in info.items():
+            deserialized_info[key] = deserializer.deserialize(value)
+
+        # Extract necessary fields
+        predicted_at_str = deserialized_info.get('predicted_at')
+        probability_str = deserialized_info.get('probability')
+        chasing_team_won_str = deserialized_info.get('chasing_team_won')
+
+        if predicted_at_str and probability_str is not None and chasing_team_won_str is not None:
+            # Convert 'predicted_at' to datetime object
+            predicted_at = datetime.fromisoformat(predicted_at_str)
+
+            # Get week number and year
+            week_number = predicted_at.isocalendar()[1]
+            year = predicted_at.year
+
+            # Convert probability to float
+            probability = float(probability_str)
+
+            # Convert to binary prediction using 0.5 threshold
+            chasing_team_won_pred = 1 if probability >= 50.0 else 0
+
+            # Get the actual result (assuming it's a float between 0 and 1)
+            chasing_team_won = 1 if float(chasing_team_won_str) >= 0.5 else 0
+
+            # Check if prediction matches actual result
+            is_correct = 1 if chasing_team_won_pred == chasing_team_won else 0
+
+            # Append processed data
+            processed_data.append({
+                'week_number': week_number,
+                'year': year,
+                'is_correct': is_correct
+            })
+        else:
+            # Handle missing data
+            continue
+
+    return processed_data
+
+
+def fetch_predictions():
+        dynamodb = boto3.resource('dynamodb', region_name='eu-north-1')
+        table = dynamodb.Table('YourTableName')  # Replace with your actual table name
+
+        # Scan the table for items where 'info.result' exists
+        response = table.scan(
+            FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists()
+        )
+        items = response.get('Items', [])
+
+        # Handle pagination if necessary
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(
+                FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists(),
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+            items.extend(response.get('Items', []))
+
+        return items
+
+
+@app.route('/track_model_performance')
+def track_model_performance():
+    items = fetch_predictions()
+    processed_data = process_predictions(items)
+    weekly_accuracy = calculate_weekly_accuracy(processed_data)
+    weeks, accuracies = prepare_chart_data(weekly_accuracy)
+
+    # Calculate overall accuracy
+    total_correct = sum(data['is_correct'] for data in processed_data)
+    total_predictions = len(processed_data)
+    overall_accuracy = (total_correct / total_predictions) * 100 if total_predictions > 0 else 0
+
+    return render_template('track_model_performance.html',
+                           weeks=weeks,
+                           accuracies=accuracies,
+                           overall_accuracy=overall_accuracy)
+
+
+def prepare_chart_data(weekly_accuracy):
+    # Sort the data by week
+    weekly_accuracy.sort(key=lambda x: x['week'])
+
+    # Separate weeks and accuracy for plotting
+    weeks = [data['week'] for data in weekly_accuracy]
+    accuracies = [data['accuracy'] for data in weekly_accuracy]
+
+    return weeks, accuracies
+
+
+from collections import defaultdict
+
+def calculate_weekly_accuracy(processed_data):
+    # Dictionary to store accuracy per week
+    weekly_results = defaultdict(lambda: {'correct': 0, 'total': 0})
+
+    for data in processed_data:
+        key = f"{data['year']}-W{data['week_number']}"
+        weekly_results[key]['correct'] += data['is_correct']
+        weekly_results[key]['total'] += 1
+
+    # Calculate accuracy per week
+    weekly_accuracy = []
+    for week in sorted(weekly_results.keys()):
+        correct = weekly_results[week]['correct']
+        total = weekly_results[week]['total']
+        accuracy = (correct / total) * 100 if total > 0 else 0
+        weekly_accuracy.append({
+            'week': week,
+            'accuracy': accuracy
+        })
+
+    return weekly_accuracy
+
+
+from datetime import datetime
+from boto3.dynamodb.types import TypeDeserializer
+
+def process_predictions(items):
+    deserializer = TypeDeserializer()
+    processed_data = []
+
+    for item in items:
+        info = item.get('info', {})
+
+        # Deserialize the 'info' map
+        deserialized_info = {}
+        for key, value in info.items():
+            deserialized_info[key] = deserializer.deserialize(value)
+
+        # Extract necessary fields
+        predicted_at_str = deserialized_info.get('predicted_at')
+        probability_str = deserialized_info.get('probability')
+        chasing_team_won_str = deserialized_info.get('chasing_team_won')
+
+        if predicted_at_str and probability_str is not None and chasing_team_won_str is not None:
+            # Convert 'predicted_at' to datetime object
+            predicted_at = datetime.fromisoformat(predicted_at_str)
+
+            # Get week number and year
+            week_number = predicted_at.isocalendar()[1]
+            year = predicted_at.year
+
+            # Convert probability to float
+            probability = float(probability_str)
+
+            # Convert to binary prediction using 0.5 threshold
+            chasing_team_won_pred = 1 if probability >= 50.0 else 0
+
+            # Get the actual result (assuming it's a float between 0 and 1)
+            chasing_team_won = 1 if float(chasing_team_won_str) >= 0.5 else 0
+
+            # Check if prediction matches actual result
+            is_correct = 1 if chasing_team_won_pred == chasing_team_won else 0
+
+            # Append processed data
+            processed_data.append({
+                'week_number': week_number,
+                'year': year,
+                'is_correct': is_correct
+            })
+        else:
+            # Handle missing data
+            continue
+
+    return processed_data
 
 if __name__ == '__main__':
     app.run(debug=True)
