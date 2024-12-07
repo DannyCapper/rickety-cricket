@@ -2,8 +2,9 @@ import boto3
 import json
 import logging
 import requests
+
 from botocore.exceptions import ClientError
-from other_helpers import extract_winning_team, determine_chasing_team
+from rickety_cricket.utils.data_helpers import extract_winning_team, determine_chasing_team
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -46,58 +47,16 @@ def get_match_info(api_key, match_id):
         if data.get('status') != 'success':
             logger.error(f"Failed to fetch match info for match_id {match_id}.")
             return None
-        match_data = data.get('data', {})
-
-        teams = match_data.get('teams', [])
-        if len(teams) >= 2:
-            team_batting_first = teams[0]
-            team_batting_second = teams[1]
-        else:
-            team_batting_first = team_batting_second = 'Unknown'
-
-        score_list = match_data.get('score', [])
-        if score_list:
-            current_score = score_list[-1]
-            current_inning = current_score.get('inning', '')
-            runs = current_score.get('r', 0)
-            wickets = current_score.get('w', 0)
-            overs = current_score.get('o', 0)
-        else:
-            current_inning = ''
-            runs = wickets = overs = 0
-
-        if 'Inning 1' in current_inning:
-            innings_number = 1
-        elif 'Inning 2' in current_inning:
-            innings_number = 2
-        else:
-            innings_number = 'Unknown'
-
-        if innings_number == 2 and len(score_list) >= 1:
-            previous_innings = score_list[0]
-            total_chasing = previous_innings.get('r', 0)
-        elif innings_number == 1:
-            # Not applicable in first innings, use NaN or -1
-            total_chasing = float('nan')
-        else:
-            total_chasing = float('nan')
-
-        result = {
-            'team_batting_first': team_batting_first,
-            'team_batting_second': team_batting_second,
-            'current_innings': innings_number,
-            'current_runs': runs,
-            'current_wickets': wickets,
-            'current_overs': overs,
-            'total_chasing': total_chasing
-        }
-
-        return result
+        return data
     else:
         logger.error(f"Failed to fetch match info for match_id {match_id}. Status Code: {response.status_code}")
         return None
 
 def get_match_result(api_key, match_id):
+    """
+    Determine the match result and whether the chasing team won.
+    Returns (result_string, chasing_team_won) or (None, None) if ongoing.
+    """
     url = f'https://api.cricapi.com/v1/match_info?apikey={api_key}&id={match_id}'
     response = requests.get(url)
     if response.status_code == 200:
@@ -111,21 +70,18 @@ def get_match_result(api_key, match_id):
             status_lower = status.lower()
             finished_keywords = ['won by', 'tie', 'draw', 'no result', 'abandoned']
             if any(keyword in status_lower for keyword in finished_keywords):
-                # The match has finished
                 winning_team = extract_winning_team(status, teams)
-                if winning_team in ('Tie', 'No Result') or winning_team is None:
+                if not winning_team:
                     logger.warning(f"Could not determine winning team from status '{status}'")
                     return None, None
                 chasing_team = determine_chasing_team(score)
                 if not chasing_team:
                     logger.warning(f"Could not determine chasing team for match_id {match_id}")
                     return None, None
-
                 chasing_team_won = 1 if winning_team == chasing_team else 0
-                result = status
-                return result, chasing_team_won
+                return status, chasing_team_won
             else:
-                # Match is still ongoing
+                # Match still ongoing
                 logger.info(f"Match {match_id} status: {status}")
                 return None, None
         else:

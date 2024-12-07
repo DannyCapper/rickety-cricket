@@ -1,14 +1,15 @@
 import boto3
 import logging
 import numpy as np
+import os
 import time
 
 from catboost import CatBoostClassifier
 from datetime import datetime
 
-from predictions import Predictions
-from api_helpers import *
-from other_helpers import *
+from rickety_cricket.utils.api_helpers import *
+from rickety_cricket.utils.db_helpers import *
+from rickety_cricket.utils.data_helpers import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,9 @@ def main():
 
     # Load the model
     model = CatBoostClassifier()
-    model.load_model('model.cbm')
+    current_dir = os.path.dirname(__file__)
+    model_path = os.path.join(current_dir, 'model.cbm')
+    model.load_model(model_path)
 
     # Fetch current matches and filter for men's international T20
     matches = get_current_matches(api_key)
@@ -49,6 +52,7 @@ def main():
         match_info = get_match_info(api_key, match_id)
 
         if match_info:
+            print(match_info)
             if match_info['current_innings'] == 'Unknown':
                 logger.info("Match hasn't started. Skipping prediction.")
             else:

@@ -2,17 +2,15 @@ import logging
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
+from rickety_cricket.utils.api_helpers import get_match_result
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
 
 class Predictions:
     """Encapsulates an Amazon DynamoDB table of predictions data."""
 
     def __init__(self, dyn_resource, table_name):
-        """
-        Initializes the Predictions object by ensuring the DynamoDB table exists.
-        """
         self.dyn_resource = dyn_resource
         self.table_name = table_name
 
@@ -35,7 +33,7 @@ class Predictions:
             table = self.dyn_resource.create_table(
                 TableName=table_name,
                 KeySchema=[
-                    {"AttributeName": "prediction_id", "KeyType": "HASH"},  # Partition key
+                    {"AttributeName": "prediction_id", "KeyType": "HASH"},
                 ],
                 AttributeDefinitions=[
                     {"AttributeName": "prediction_id", "AttributeType": "N"},
@@ -54,7 +52,6 @@ class Predictions:
     def insert_prediction(self, prediction_data):
         """
         Insert a prediction item into the DynamoDB table.
-        prediction_data should contain 'prediction_id' and 'info' map.
         """
         try:
             self.table.put_item(Item=prediction_data)
@@ -80,7 +77,6 @@ class Predictions:
                 ExclusiveStartKey=response['LastEvaluatedKey']
             )
             items.extend(response.get('Items', []))
-
         return items
 
     def update_match_result(self, prediction_id, result, chasing_team_won):
@@ -100,3 +96,30 @@ class Predictions:
                 f"Couldn't update result for prediction_id {prediction_id}. Error: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
             )
             raise
+
+def update_pending_results(api_key, predictions_table):
+    """
+    Update pending results where matches have concluded.
+    """
+    items = predictions_table.get_pending_predictions()
+    for item in items:
+        if not isinstance(item, dict):
+            logger.error(f"Item is not a dict: {item}")
+            continue
+
+        prediction_id = item.get('prediction_id')
+        if prediction_id is None:
+            logger.warning("No prediction_id found in item.")
+            continue
+
+        info = item.get('info', {})
+        match_id = info.get('match_id')
+        if not match_id:
+            logger.warning(f"Match ID not found for prediction_id {prediction_id}")
+            continue
+
+        result, chasing_team_won = get_match_result(api_key, match_id)
+        if result is not None and chasing_team_won is not None:
+            predictions_table.update_match_result(prediction_id, result, chasing_team_won)
+        else:
+            logger.info(f"Match {match_id} is still ongoing or no result found.")
