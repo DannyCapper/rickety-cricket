@@ -5,5 +5,4 @@ flask
 numpy
 pandas
 pytest
-requests
 scikit-learn
