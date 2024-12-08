@@ -4,3 +4,7 @@ __pycache__/
 model_training/historical_data/
 .pytest_cache
 rickety_cricket.egg-info
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
