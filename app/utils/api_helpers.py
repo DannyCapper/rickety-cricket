@@ -4,7 +4,7 @@ import logging
 import requests
 
 from botocore.exceptions import ClientError
-from rickety_cricket.utils.data_helpers import extract_winning_team, determine_chasing_team
+from app.utils.data_helpers import extract_winning_team, determine_chasing_team
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -22,9 +22,9 @@ def get_secret(secret_name):
         raise e
 
 def get_api_key():
-    secret = get_secret('cricket-api-key')
+    secret = get_secret('cricket_data')
     secret_dict = json.loads(secret)
-    return secret_dict['CRIC_API_KEY']
+    return secret_dict['cricket-api-key']
 
 def get_current_matches(api_key):
     url = 'https://api.cricapi.com/v1/currentMatches'

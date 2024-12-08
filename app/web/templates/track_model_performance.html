@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Model Performance{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="text-center mb-4">Model Performance</h1>
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <h5 class="card-title">Overall Accuracy</h5>
+                <h2 class="display-4">{{ "%.1f"|format(overall_accuracy) }}%</h2>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div style="height: 500px;">  <!-- Increased height -->
+                    <canvas id="accuracyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ctx = document.getElementById('accuracyChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ weeks | tojson | safe }},
+            datasets: [{
+                label: 'Weekly Accuracy (%)',
+                data: {{ accuracies | tojson | safe }},
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Weekly Prediction Accuracy'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Accuracy (%)'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

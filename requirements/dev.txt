@@ -1,8 +1,8 @@
 catboost
-ipykernel
 ipywidgets
-flask
+matplotlib
 numpy
 pandas
 pytest
+pytest-cov
 scikit-learn

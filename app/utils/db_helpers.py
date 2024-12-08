@@ -2,7 +2,7 @@ import logging
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
-from rickety_cricket.utils.api_helpers import get_match_result
+from app.utils.api_helpers import get_match_result
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -127,26 +127,22 @@ class Predictions:
     def fetch_predictions(self):
         """
         Retrieve predictions from the DynamoDB table associated with this Predictions instance.
-        This method scans the table and returns all items that have both 'info.result' and 'info.chasing_team_won' set.
+        Returns all items from the table.
 
-        These returned items can be processed by functions such as process_predictions and calculate_weekly_accuracy.
-
-        :return: A list of items (dictionaries) from DynamoDB that match the filter criteria.
+        :return: A list of items (dictionaries) from DynamoDB.
         """
         try:
-            response = self.table.scan(
-                FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists()
-            )
+            response = self.table.scan()
             items = response.get('Items', [])
 
             # Handle pagination if there are more items
             while 'LastEvaluatedKey' in response:
                 response = self.table.scan(
-                    FilterExpression=Attr('info.result').exists() & Attr('info.chasing_team_won').exists(),
                     ExclusiveStartKey=response['LastEvaluatedKey']
                 )
                 items.extend(response.get('Items', []))
 
+            logger.info(f"Fetched {len(items)} predictions from DynamoDB")
             return items
 
         except ClientError as e:

@@ -1,0 +1,25 @@
+# Development
+venv/
+__pycache__/
+.pytest_cache/
+
+# Version control
+.git/
+.gitignore
+.dockerignore
+
+# Environment and local config
+rickety_cricket.egg-info/
+
+# Docker files (since we're using EB)
+docker/
+Dockerfile*
+.dockerignore
+
+# Development & lambda
+model_training/
+tests/
+app/lambda
+
+# Documentation
+README.md

@@ -95,7 +95,7 @@ def process_json(folder, filename):
 
 def read_and_process_data():
 
-    folder = '../historical_data'
+    folder = 'historical_data'
 
     files = os.listdir(folder)
 
