@@ -4,7 +4,7 @@ import logging
 import requests
 
 from botocore.exceptions import ClientError
-from rickety_cricket.utils.data_helpers import extract_winning_team, determine_chasing_team
+from app.utils.data_helpers import extract_winning_team, determine_chasing_team
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

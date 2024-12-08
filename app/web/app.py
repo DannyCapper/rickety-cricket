@@ -5,9 +5,9 @@ from flask import Flask, render_template, request
 
 from catboost import CatBoostClassifier
 
-from rickety_cricket.utils.api_helpers import *
-from rickety_cricket.utils.data_helpers import *
-from rickety_cricket.utils.db_helpers import *
+from utils.api_helpers import *
+from utils.data_helpers import *
+from utils.db_helpers import *
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)

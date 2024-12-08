@@ -1,0 +1,8 @@
+catboost
+ipywidgets
+matplotlib
+numpy
+pandas
+pytest
+pytest-cov
+scikit-learn

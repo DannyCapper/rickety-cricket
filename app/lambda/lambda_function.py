@@ -7,15 +7,15 @@ import time
 from catboost import CatBoostClassifier
 from datetime import datetime
 
-from rickety_cricket.utils.api_helpers import *
-from rickety_cricket.utils.db_helpers import *
-from rickety_cricket.utils.data_helpers import *
+from app.utils.api_helpers import *
+from app.utils.db_helpers import *
+from app.utils.data_helpers import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def main():
+def main(event, context):
     """
     Main entry point for the Lambda function or script.
     Fetches current matches, selects a men's international T20 match,
@@ -33,8 +33,9 @@ def main():
 
     # Load the model
     model = CatBoostClassifier()
-    current_dir = os.path.dirname(__file__)
-    model_path = os.path.join(current_dir, 'model.cbm')
+    current_dir = os.path.dirname(__file__)  # Gets app/lambda directory
+    parent_dir = os.path.dirname(current_dir)  # Goes up to app directory
+    model_path = os.path.join(parent_dir, 'model.cbm')
     model.load_model(model_path)
 
     # Fetch current matches and filter for men's international T20

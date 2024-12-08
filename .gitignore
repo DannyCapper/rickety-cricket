@@ -1,3 +1,6 @@
 venv/
+catboost_info/
 __pycache__/
 model_training/historical_data/
+.pytest_cache
+rickety_cricket.egg-info

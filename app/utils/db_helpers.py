@@ -2,7 +2,7 @@ import logging
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
-from rickety_cricket.utils.api_helpers import get_match_result
+from app.utils.api_helpers import get_match_result
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
