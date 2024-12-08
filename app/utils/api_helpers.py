@@ -22,9 +22,9 @@ def get_secret(secret_name):
         raise e
 
 def get_api_key():
-    secret = get_secret('cricket-api-key')
+    secret = get_secret('cricket_data')
     secret_dict = json.loads(secret)
-    return secret_dict['CRIC_API_KEY']
+    return secret_dict['cricket-api-key']
 
 def get_current_matches(api_key):
     url = 'https://api.cricapi.com/v1/currentMatches'

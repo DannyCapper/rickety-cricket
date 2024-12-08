@@ -42,24 +42,24 @@ def select_random_match(filtered_matches):
     return None
 
 def prepare_features(match_info):
-    innings = match_info['current_innings']
-    runs = match_info['current_runs']
-    wickets = match_info['current_wickets']
-    overs_float = match_info['current_overs']
-    total_chasing = match_info['total_chasing']
+    score = match_info['data']['score']
 
-    if overs_float is None or overs_float == 0.0:
-        balls_bowled = 0
+    innings = len(score)
+    innings_index = innings - 1
+
+    runs = score[innings_index]['r']
+    wickets = score[innings_index]['w']
+    overs = int(score[innings_index]['o'])
+    ball = overs + 6 * round((overs - score[innings_index]['o']) * 6) + 1
+
+    if innings == 1:
+        total_chasing = np.nan
     else:
-        overs = int(overs_float)
-        partial_over = overs_float - overs
-        balls = round(partial_over * 6)
-        balls_bowled = overs * 6 + balls
-    ball_number = balls_bowled + 1
+        total_chasing = score[0]['r']
 
     return {
-        'innings': innings if innings != 'Unknown' else np.nan,
-        'ball': ball_number,
+        'innings': innings,
+        'ball': ball,
         'runs': runs,
         'wickets': wickets,
         'total_chasing': total_chasing if total_chasing is not None else np.nan
@@ -85,54 +85,84 @@ def determine_chasing_team(score):
     return None
 
 def process_predictions(items):
-    deserializer = TypeDeserializer()
     processed_data = []
-
+    
+    print(f"Total items fetched from DynamoDB: {len(items)}")  # Debug
+    
     for item in items:
-        info = item.get('info', {})
-        deserialized_info = {}
-        for key, value in info.items():
-            deserialized_info[key] = deserializer.deserialize(value)
-
-        predicted_at_str = deserialized_info.get('predicted_at')
-        probability_str = deserialized_info.get('probability')
-        chasing_team_won_str = deserialized_info.get('chasing_team_won')
-
-        if predicted_at_str and probability_str is not None and chasing_team_won_str is not None:
-            predicted_at = datetime.fromisoformat(predicted_at_str)
-            week_number = predicted_at.isocalendar()[1]
-            year = predicted_at.year
-            probability = float(probability_str)
-            chasing_team_won_pred = 1 if probability >= 50.0 else 0
-            actual_probability = float(chasing_team_won_str)
-            chasing_team_won = 1 if actual_probability >= 0.5 else 0
-            is_correct = 1 if chasing_team_won_pred == chasing_team_won else 0
-            processed_data.append({
-                'week_number': week_number,
-                'year': year,
-                'is_correct': is_correct
-            })
+        print(f"Processing item: {item}")  # Debug
+        prediction_data = {}
+        
+        # Convert Decimal to float for numerical values
+        for key, value in item.items():
+            if isinstance(value, Decimal):
+                prediction_data[key] = float(value)
+            else:
+                prediction_data[key] = value
+                
+        print(f"Converted prediction data: {prediction_data}")  # Debug
+        print(f"chasing_team_won value: {prediction_data.get('chasing_team_won')}")  # Debug
+        
+        # Only include predictions where we know the result
+        if (prediction_data.get('chasing_team_won') is not None and 
+            prediction_data.get('chasing_team_won') != 'NULL'):  # Check for DynamoDB NULL
+            # Calculate if prediction was correct
+            predicted_win = prediction_data.get('probability', 0) > 0.5
+            actual_win = bool(prediction_data.get('chasing_team_won'))
+            prediction_data['is_correct'] = predicted_win == actual_win
+            
+            # Convert prediction timestamp to datetime if it exists
+            if 'predicted_at' in prediction_data:
+                prediction_data['predicted_at'] = datetime.fromisoformat(
+                    prediction_data['predicted_at'].replace('Z', '+00:00')
+                )
+            
+            processed_data.append(prediction_data)
+            print(f"Added to processed data")  # Debug
         else:
-            continue
+            print(f"Skipping item due to missing or NULL chasing_team_won")  # Debug
+    
+    print(f"Processed {len(processed_data)} completed predictions")
     return processed_data
 
-def calculate_weekly_accuracy(processed_data):
-    weekly_results = defaultdict(lambda: {'correct': 0, 'total': 0})
-    for data in processed_data:
-        key = f"{data['year']}-W{data['week_number']}"
-        weekly_results[key]['correct'] += data['is_correct']
-        weekly_results[key]['total'] += 1
-
-    weekly_accuracy = []
-    for week in sorted(weekly_results.keys()):
-        correct = weekly_results[week]['correct']
-        total = weekly_results[week]['total']
-        accuracy = (correct / total) * 100 if total > 0 else 0
-        weekly_accuracy.append({'week': week, 'accuracy': accuracy})
+def calculate_weekly_accuracy(predictions):
+    weekly_accuracy = {}
+    
+    for pred in predictions:
+        if ('predicted_at' not in pred or 
+            'is_correct' not in pred or 
+            pred.get('chasing_team_won') is None):  # Skip pending matches
+            continue
+            
+        # Get the week number
+        week = pred['predicted_at'].isocalendar()[1]
+        
+        if week not in weekly_accuracy:
+            weekly_accuracy[week] = {'correct': 0, 'total': 0}
+            
+        weekly_accuracy[week]['total'] += 1
+        if pred['is_correct']:
+            weekly_accuracy[week]['correct'] += 1
+    
+    # Calculate percentages
+    for week in weekly_accuracy:
+        total = weekly_accuracy[week]['total']
+        correct = weekly_accuracy[week]['correct']
+        weekly_accuracy[week] = (correct / total * 100) if total > 0 else 0
+    
+    print(f"Weekly accuracy calculated for weeks: {list(weekly_accuracy.keys())}")  # Debug print
     return weekly_accuracy
 
 def prepare_chart_data(weekly_accuracy):
-    weekly_accuracy.sort(key=lambda x: x['week'])
-    weeks = [data['week'] for data in weekly_accuracy]
-    accuracies = [data['accuracy'] for data in weekly_accuracy]
-    return weeks, accuracies
+    # Sort weeks to ensure chronological order
+    sorted_weeks = sorted(weekly_accuracy.keys())
+    accuracies = [weekly_accuracy[week] for week in sorted_weeks]
+    
+    # Convert week numbers to dates (first day of each week)
+    week_labels = []
+    for week in sorted_weeks:
+        # Create date from ISO week
+        date = datetime.strptime(f'2023-W{week}-1', '%Y-W%W-%w')
+        week_labels.append(date.strftime('%b %d'))  # Format as "Nov 06"
+    
+    return week_labels, accuracies
