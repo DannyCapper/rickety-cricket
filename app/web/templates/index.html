@@ -4,16 +4,24 @@
 
 {% block content %}
 <h1 class="text-center mb-4">Select a Live Match</h1>
-<form action="/predict" method="post" class="col-md-6 offset-md-3">
-    <div class="form-group">
-        <label for="matchSelect">Live Matches:</label>
-        <select name="match_id" id="matchSelect" class="form-control">
-            {% for match in matches %}
-                <option value="{{ match.id }}">{{ match.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <button type="submit" class="btn btn-primary btn-block">Get Prediction</button>
-</form>
-{% endblock %}
 
+{% if message %}
+    <div class="alert alert-info text-center col-md-6 offset-md-3 mb-4">
+        {{ message }}
+    </div>
+{% endif %}
+
+{% if matches %}
+    <form action="/predict" method="post" class="col-md-6 offset-md-3">
+        <div class="form-group">
+            <label for="matchSelect">Live Matches:</label>
+            <select name="match_id" id="matchSelect" class="form-control">
+                {% for match in matches %}
+                    <option value="{{ match.id }}">{{ match.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Get Prediction</button>
+    </form>
+{% endif %}
+{% endblock %}

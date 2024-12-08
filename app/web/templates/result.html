@@ -6,14 +6,36 @@
 <h1 class="text-center mb-4">Match Prediction</h1>
 <div class="card">
     <div class="card-body">
-        <h5 class="card-title">{{ match_info.team_batting_first }} vs {{ match_info.team_batting_second }}</h5>
-        <p class="card-text"><strong>Current Innings:</strong> {{ match_info.current_inning_label }}</p>
-        <p class="card-text"><strong>Current Score:</strong> {{ match_info.current_runs }}/{{ match_info.current_wickets }} in {{ match_info.current_overs }} overs</p>
-        {% if match_info.current_innings == 2 %}
-            <p class="card-text"><strong>Target:</strong> {{ match_info.total_chasing + 1 }}</p>
+        <h5 class="card-title">{{ match_info.data.teams[0] }} vs {{ match_info.data.teams[1] }}</h5>
+        <p class="card-text"><strong>Match Status:</strong> {{ match_info.data.status }}</p>
+        {% if match_info.data.score|length > 0 %}
+            <p class="card-text">
+                <strong>First Innings:</strong> 
+                {{ match_info.data.score[0].r }}/{{ match_info.data.score[0].w }} 
+                ({{ match_info.data.score[0].o }} overs)
+            </p>
         {% endif %}
-        <p class="card-text"><strong>Predicted Probability of {{ match_info.team_batting_second }} Winning:</strong> {{ probability }}%</p>
-        <a href="/" class="btn btn-primary">Back to Home</a>
+        {% if match_info.data.score|length > 1 %}
+            <p class="card-text">
+                <strong>Second Innings:</strong> 
+                {{ match_info.data.score[1].r }}/{{ match_info.data.score[1].w }} 
+                ({{ match_info.data.score[1].o }} overs)
+            </p>
+            <p class="card-text">
+                <strong>Target:</strong> {{ match_info.data.score[0].r + 1 }}
+            </p>
+        {% endif %}
+        <p class="card-text">
+            <strong>Predicted Probability of {{ match_info.data.teams[1] }} Winning:</strong> 
+            {{ "%.1f"|format(probability) }}%
+        </p>
+        <div class="mt-3">
+            <p class="card-text"><small class="text-muted">
+                <strong>Venue:</strong> {{ match_info.data.venue }}<br>
+                <strong>Toss:</strong> {{ match_info.data.tossWinner }} chose to {{ match_info.data.tossChoice }}
+            </small></p>
+        </div>
+        <a href="/" class="btn btn-primary mt-3">Back to Home</a>
     </div>
 </div>
 {% endblock %}
