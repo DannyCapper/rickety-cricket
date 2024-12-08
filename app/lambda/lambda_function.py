@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def main(event, context):
+def main():
     """
     Main entry point for the Lambda function or script.
     Fetches current matches, selects a men's international T20 match,
@@ -53,7 +53,6 @@ def main(event, context):
         match_info = get_match_info(api_key, match_id)
 
         if match_info:
-            print(match_info)
             if match_info['current_innings'] == 'Unknown':
                 logger.info("Match hasn't started. Skipping prediction.")
             else:
