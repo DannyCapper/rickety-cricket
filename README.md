@@ -5,6 +5,8 @@ Rickety Cricket is a live cricket predictions app for T20 matches. The project i
 * An AWS Lambda function for periodically making predictions and updating DynamoDB results.
 * A Flask web app for viewing live matches, generating predictions, and displaying model performance.
 
+The web app is [available here](https://rickety-cricket.onrender.com/).
+
 ## Key Features
 1. Live Match Prediction
 
