@@ -2,3 +2,4 @@ model_training/
 venv/
 .gitignore
 README.md
+src/web/
