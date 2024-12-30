@@ -12,7 +12,7 @@ from src.utils.api_helpers import (
     get_match_info
 )
 from src.utils.data_helpers import (
-    filter_mens_international_t20,
+    filter_mens_t20,
     prepare_features,
     process_predictions,
     calculate_weekly_accuracy,
@@ -44,7 +44,7 @@ predictions_table = Predictions(dynamodb_resource, "Predictions")
 @app.route("/")
 def index():
     """
-    Main endpoint for listing ongoing men's T20 international matches.
+    Main endpoint for listing ongoing men's T20 matches.
     
     1. Retrieves an API key from AWS Secrets Manager.
     2. Fetches all current matches via CricAPI.
@@ -59,12 +59,12 @@ def index():
     try:
         api_key = get_api_key()
         matches = get_current_matches(api_key)
-        filtered_matches = filter_mens_international_t20(matches)
+        filtered_matches = filter_mens_t20(matches)
 
         # If no matches are in progress, display a friendly message on the page.
         message = None
         if not filtered_matches:
-            message = "There are currently no men's T20 international matches in progress."
+            message = "There are currently no men's T20 matches in progress."
 
         return render_template(
             "index.html",

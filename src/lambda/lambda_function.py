@@ -13,7 +13,7 @@ from src.utils.api_helpers import (
 )
 from src.utils.db_helpers import Predictions
 from src.utils.data_helpers import (
-    filter_mens_international_t20,
+    filter_mens_t20,
     prepare_features, 
     select_random_match,
     to_decimal
@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 def main(event=None, context=None):
     """
     Main entry point for the Lambda function or script.
-    Fetches current matches, selects a men's international T20 match,
+    Fetches current matches, selects a men's T20 match,
     makes a prediction, inserts into DynamoDB, and updates pending results.
 
     If we cannot parse which team is batting first/second, a ValueError will be raised.
@@ -48,13 +48,13 @@ def main(event=None, context=None):
     model_path = os.path.join(parent_dir, "model.cbm")
     model.load_model(model_path)
 
-    # 5. Fetch current matches and filter for men's international T20
+    # 5. Fetch current matches and filter for men's T20
     matches = get_current_matches(api_key)
-    filtered_matches = filter_mens_international_t20(matches)
+    filtered_matches = filter_mens_t20(matches)
     selected_match = select_random_match(filtered_matches)
 
     if not selected_match:
-        logger.info("No men's international T20 matches are currently in play.")
+        logger.info("No men's T20 matches are currently in play.")
         return
 
     match_id = selected_match.get("id")

@@ -20,9 +20,9 @@ def to_decimal(value):
     return Decimal(str(value))
 
 
-def filter_mens_international_t20(matches):
+def filter_mens_t20(matches):
     """
-    Filter a list of matches to only include men's international T20 matches 
+    Filter a list of matches to only include men's T20 matches 
     that have started but not yet ended.
 
     Parameters
@@ -33,7 +33,7 @@ def filter_mens_international_t20(matches):
     Returns
     -------
     list of dict
-        Filtered list containing only men's international T20 matches in progress.
+        Filtered list containing only men's T20 matches in progress.
     """
     filtered = []
     for match in matches:
