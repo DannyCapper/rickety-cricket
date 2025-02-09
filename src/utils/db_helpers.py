@@ -2,6 +2,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
+from datetime import datetime, timedelta
 
 from src.utils.api_helpers import get_match_result
 
@@ -126,24 +127,36 @@ class Predictions:
             )
             raise
 
-    def get_pending_predictions(self):
+    def get_recent_pending_predictions(self):
         """
-        Retrieve all prediction records from the table where 'result' is missing or None.
+        Retrieve all prediction records from the table where:
+        - The prediction was made in the past 2 days (based on the 'predicted_at' timestamp).
+        - The 'result' field is missing or None.
 
         Returns
         -------
         list of dict
             A list of pending prediction items from the table.
         """
-        response = self.table.scan(
-            FilterExpression=Attr("result").not_exists() | Attr("result").eq(None)
+        # Compute the Unix timestamp for two days ago.
+        two_days_ago = datetime.now() - timedelta(days=2)
+        two_days_ago_timestamp = int(two_days_ago.timestamp())
+
+        # Build the filter expression:
+        # 1. The 'result' attribute does not exist or is None.
+        # 2. The 'predicted_at' timestamp is greater than or equal to two_days_ago_timestamp.
+        filter_expression = (
+            (Attr("result").not_exists() | Attr("result").eq(None))
+            & Attr("predicted_at").gte(two_days_ago_timestamp)
         )
+
+        response = self.table.scan(FilterExpression=filter_expression)
         items = response.get("Items", [])
 
         # Handle pagination
         while "LastEvaluatedKey" in response:
             response = self.table.scan(
-                FilterExpression=Attr("result").not_exists() | Attr("result").eq(None),
+                FilterExpression=filter_expression,
                 ExclusiveStartKey=response["LastEvaluatedKey"]
             )
             items.extend(response.get("Items", []))
@@ -188,10 +201,10 @@ class Predictions:
 
     def update_pending_results(self, api_key):
         """
-        Check all pending predictions and update their result if the match has concluded.
+        Check all pending predictions in last 2 days and update their result if the match has concluded.
 
         Steps:
-        1. Retrieve all pending predictions (where 'result' is missing/None).
+        1. Retrieve all pending predictions in last x (where 'result' is missing/None).
         2. For each pending prediction, call `get_match_result` to see if the match is finished.
         3. If finished, update the table with the final 'result' and 'chasing_team_won'.
         4. If still ongoing, do nothing (leave it pending).
@@ -201,7 +214,7 @@ class Predictions:
         api_key : str
             The API key required for retrieving match info.
         """
-        items = self.get_pending_predictions()
+        items = self.get_recent_pending_predictions()
         for item in items:
             if not isinstance(item, dict):
                 logger.error(f"Skipped an invalid item: {item}")
