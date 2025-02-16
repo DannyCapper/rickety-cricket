@@ -39,11 +39,16 @@ def filter_mens_t20(matches):
     for match in matches:
         match_type = match.get("matchType", "").lower()
         name = match.get("name", "")
+        status = match.get("status", "")
         match_started = match.get("matchStarted", False)
         match_ended = match.get("matchEnded", False)
 
         # Exclude women's matches
         if "women" in name.lower():
+            continue
+
+        # Exclude no results
+        if "no result" in status.lower():
             continue
 
         # Include if T20, started, and not ended
